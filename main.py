@@ -1,8 +1,15 @@
-import os
-import cloudinary.api
-import cloudinary.uploader
 import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+import os
+import uuid
+import requests
+import subprocess
+
 from dotenv import load_dotenv
+from fastapi import FastAPI
+app = FastAPI()
+
 load_dotenv()
 
 config = cloudinary.config(
@@ -11,18 +18,15 @@ config = cloudinary.config(
     api_secret=os.getenv("API_SECRET")
 )
 
-print("****1. Set up and configure the SDK:****\nCredentials: ",
-      config.cloud_name, config.api_key, "\n")
-
 
 def uploadImage():
+    name_of_the_image = uuid.uuid4()
+    command = f"fswebcam -r 1280x720 --no-banner {name_of_the_image}.jpeg"
+    subprocess.call(command, shell=True)
+    cloudinary.uploader.upload(f"{name_of_the_image}.jpeg",
+                               public_id=f"{name_of_the_image}", unique_filename=False, overwrite=True)
 
-    cloudinary.uploader.upload("test.jpeg",
-                               public_id="test_image", unique_filename=False, overwrite=True)
-
-    srcURL = cloudinary.CloudinaryImage("test_image").build_url()
-
-    print("****2. Upload an image****\nDelivery URL: ", srcURL, "\n")
-
-
-uploadImage()
+    srcURL = cloudinary.CloudinaryImage(f"{name_of_the_image}").build_url()
+    resp = requests.post(
+        "http://13.233.233.124:8000/compare_faces", json={"url": srcURL})
+    print(resp.json())
